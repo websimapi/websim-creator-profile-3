@@ -319,44 +319,82 @@
             const dateStr = new Date(item.timestamp).toLocaleDateString();
             const timeStr = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            // Prefer item.message if available
             if (item.message) {
-                contentHtml = item.message; // Assuming item.message might contain HTML for links, etc.
-                                         // For security, if item.message is plain text, escape it or build HTML carefully.
-                                         // Here, we trust websim's item.message or ensure it's constructed safely.
+                // Use pre-formatted message if available
+                contentHtml = item.message;
             } else {
-                // Fallback to constructing based on type
-                let actionText = capitalizeFirstLetter(item.type.replace(/_/g, ' '));
-                let targetText = '';
+                // Construct message from item parts
+                let actionText = item.type ? capitalizeFirstLetter(item.type.replace(/_/g, ' ')) : 'Activity'; // E.g. "Created project"
+                let constructedContentHtml = '';
 
+                // Determine Target Display first
+                let targetDisplayString = '';
                 if (item.target) {
-                    if (item.target.title) {
-                        targetText = `<strong>${item.target.title}</strong>`;
-                        if (item.target.url) {
-                            targetText = `<a href="${item.target.url}" target="_blank">${targetText}</a>`;
+                    const target = item.target;
+                    if (target.title) { // For projects, sites, etc. with a title
+                        targetDisplayString = `<strong>${target.title}</strong>`;
+                        if (target.url) {
+                            targetDisplayString = `<a href="${target.url}" target="_blank">${targetDisplayString}</a>`;
+                        } else {
+                            // Fallback: construct URL if target.id and target.type are known
+                            let linkUrl;
+                            if (target.type === 'project' && target.id) {
+                                linkUrl = `https://websim.com/p/${target.id}`;
+                            } else if (target.type === 'site' && target.id) {
+                                linkUrl = `https://websim.com/c/${target.id}`;
+                            }
+                            if (linkUrl) {
+                                targetDisplayString = `<a href="${linkUrl}" target="_blank">${targetDisplayString}</a>`;
+                            }
                         }
-                    } else if (item.target.username) {
-                         targetText = `<strong>@${item.target.username}</strong>`;
-                         if (item.target.url) {
-                            targetText = `<a href="${item.target.url}" target="_blank">${targetText}</a>`;
-                        }
+                    } else if (target.username) { // For users
+                        targetDisplayString = `<strong>@${target.username}</strong>`;
+                        // Use target.url if available for profile, otherwise construct profile link
+                        const profileUrl = target.url || `https://websim.com/@${target.username}`;
+                        targetDisplayString = `<a href="${profileUrl}" target="_blank">${targetDisplayString}</a>`;
+                    } else if (target.name) { // Generic name property as a fallback
+                         targetDisplayString = `<strong>${target.name}</strong>`;
+                         if (target.url) { // Link if URL provided
+                            targetDisplayString = `<a href="${target.url}" target="_blank">${targetDisplayString}</a>`;
+                         }
                     }
+                    // If targetDisplayString is still empty but target.id exists, could show raw ID as last resort (optional)
+                    // else if (target.id && !targetDisplayString) {
+                    //    targetDisplayString = `<em>${target.type || 'item'} ID: ${target.id}</em>`;
+                    // }
+                }
+
+                // Assemble based on actor
+                if (item.actor && item.actor.username && item.actor.username !== creatorUsernameGlobal) {
+                    let actorNameDisplay = `<strong>@${item.actor.username}</strong>`;
+                    // Use actor.url if available for profile, otherwise construct standard profile link
+                    const actorProfileUrl = item.actor.url || `https://websim.com/@${item.actor.username}`;
+                    const actorLink = `<a href="${actorProfileUrl}" target="_blank">${actorNameDisplay}</a>`;
+                    // actionText is already capitalized, so use toLowerCase() for actor's actions
+                    constructedContentHtml = `${actorLink} ${actionText.toLowerCase()}`; 
+                } else {
+                    // Action by the creator or actor is unknown/irrelevant, use capitalized actionText
+                    constructedContentHtml = actionText; 
+                }
+
+                if (targetDisplayString) {
+                    constructedContentHtml += `: ${targetDisplayString}`;
+                } else if (!targetDisplayString && item.type && (item.type.includes('project') || item.type.includes('site') || item.type.includes('user'))) {
+                    // If target string is empty but type implies a target, action text might stand alone.
+                    // e.g. "Followed a user" if target details were missing.
+                    // Current logic covers this as constructedContentHtml is already set.
                 }
                 
-                contentHtml = `${actionText}`;
-                if (item.actor && item.actor.username !== creatorUsernameGlobal) { // Show actor if not current user
-                    contentHtml = `<strong>@${item.actor.username}</strong> ${actionText.toLowerCase()}`;
-                }
-                if (targetText) {
-                    contentHtml += `: ${targetText}`;
-                }
+                contentHtml = constructedContentHtml;
             }
             
-            // Ensure links in item.message are also styled if they exist
+            // Ensure all <a> tags in the final contentHtml (whether from item.message or constructed)
+            // open in a new tab.
             const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = contentHtml;
+            tempDiv.innerHTML = contentHtml; 
+            
             tempDiv.querySelectorAll('a').forEach(a => {
-                a.target = "_blank"; // Ensure all links open in new tab
+                a.target = "_blank";
             });
             
             itemDiv.innerHTML = `${tempDiv.innerHTML} <span class="feed-item-date">(${dateStr} ${timeStr})</span>`;
