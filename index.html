@@ -296,6 +296,7 @@
 
     <script>
         let creatorUsernameGlobal = '';
+        let creatorIdGlobal = ''; // Added to store creator's ID
         let feedOffset = 0;
         const feedLimit = 10; // Number of items to fetch per call
         let isLoadingFeed = false;
@@ -402,7 +403,9 @@
         }
 
         async function loadMoreFeedItems() {
-            if (isLoadingFeed || noMoreFeedItems) {
+            if (isLoadingFeed || noMoreFeedItems || !creatorIdGlobal) {
+                if (!creatorIdGlobal && creatorUsernameGlobal) console.warn("Creator ID not available, cannot load feed for", creatorUsernameGlobal);
+                else if (!creatorIdGlobal) console.warn("Creator ID not set, cannot load feed.");
                 return;
             }
 
@@ -411,31 +414,79 @@
             if (feedEndMessageEl) feedEndMessageEl.style.display = 'none';
 
             try {
-                const items = await window.websim.getCreatorFeedItems(creatorUsernameGlobal, feedOffset, feedLimit);
+                const apiUrl = `/api/v1/activity-feed?for_user_id=${creatorIdGlobal}&offset=${feedOffset}&limit=${feedLimit}`;
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`Error fetching activity feed: ${response.status} ${response.statusText}`, errorText);
+                    throw new Error(`Failed to fetch activity feed: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                let items = [];
+                let hasMoreInResponse = false; // Tracks if the API response indicates more items
+
+                if (Array.isArray(result)) {
+                    items = result;
+                    hasMoreInResponse = items.length === feedLimit;
+                } else if (result && Array.isArray(result.data)) {
+                    items = result.data;
+                    if (result.meta && typeof result.meta.has_next_page !== 'undefined') {
+                        hasMoreInResponse = result.meta.has_next_page;
+                    } else if (result.meta && typeof result.meta.end_cursor !== 'undefined') { // Basic check for cursor pagination
+                        hasMoreInResponse = !!result.meta.end_cursor && items.length > 0;
+                    }
+                    else {
+                        hasMoreInResponse = items.length === feedLimit; // Fallback for offset/limit if no explicit has_next_page
+                    }
+                } else {
+                    console.warn("Unexpected response structure from activity-feed:", result);
+                }
+
                 if (items && items.length > 0) {
-                    items.forEach(item => {
-                        if (feedItemsContainerEl) feedItemsContainerEl.appendChild(renderFeedItem(item));
+                    items.forEach(feedItem => {
+                        // Adapt timestamp: renderFeedItem expects `item.timestamp`
+                        if (!feedItem.timestamp && feedItem.created_at) {
+                            feedItem.timestamp = feedItem.created_at;
+                        } else if (!feedItem.timestamp) {
+                            // Fallback, though activity items should ideally always have a timestamp.
+                            // If not, they might sort unpredictably if mixed from multiple sources later.
+                            feedItem.timestamp = new Date().toISOString(); 
+                            console.warn("Feed item missing timestamp, using current time:", feedItem);
+                        }
+                        if (feedItemsContainerEl) feedItemsContainerEl.appendChild(renderFeedItem(feedItem));
                     });
                     feedOffset += items.length;
-                    if (items.length < feedLimit) {
+                    
+                    if (!hasMoreInResponse) {
                         noMoreFeedItems = true;
                         if (feedEndMessageEl) feedEndMessageEl.style.display = 'block';
                     }
-                } else {
-                    noMoreFeedItems = true;
-                    if (feedEndMessageEl && feedOffset === 0) { // No items at all
-                        feedItemsContainerEl.innerHTML = '<div class="feed-item" style="text-align:center; color: #1e3a8a;">No activity yet.</div>';
+                } else { // No items returned in this batch
+                    noMoreFeedItems = true; // Assume no more items if current batch is empty
+                    if (feedOffset === 0) { // No items at all on first load
+                        if(feedItemsContainerEl) feedItemsContainerEl.innerHTML = '<div class="feed-item" style="text-align:center; color: #1e3a8a;">No activity yet.</div>';
+                        if (feedEndMessageEl) feedEndMessageEl.style.display = 'none'; 
                     } else if (feedEndMessageEl) {
-                         feedEndMessageEl.style.display = 'block';
+                         feedEndMessageEl.style.display = 'block'; // Reached end after previous items
                     }
                 }
             } catch (error) {
                 console.error('Error loading feed items:', error);
-                if (feedItemsContainerEl) {
+                if (feedItemsContainerEl && feedOffset === 0) { // Show error only if it's the first load attempt or container is empty
                      const errorDiv = document.createElement('div');
                      errorDiv.className = 'feed-item';
-                     errorDiv.style.color = '#ff4100';
+                     errorDiv.style.color = '#ff4100'; // Red for error
                      errorDiv.textContent = 'Error loading activity feed.';
+                     feedItemsContainerEl.innerHTML = ''; // Clear previous content (e.g. "No activity yet")
+                     feedItemsContainerEl.appendChild(errorDiv);
+                } else if (feedItemsContainerEl) { // Append error if some items loaded
+                    const errorDiv = document.createElement('div');
+                     errorDiv.className = 'feed-item';
+                     errorDiv.style.color = '#ff4100';
+                     errorDiv.textContent = 'Error loading more activity.';
                      feedItemsContainerEl.appendChild(errorDiv);
                 }
                 noMoreFeedItems = true; // Stop trying on error
@@ -453,8 +504,10 @@
             }
         }
 
-        function initializeFeed(username) {
+        function initializeFeed(username, userId) { // Added userId parameter
             creatorUsernameGlobal = username;
+            creatorIdGlobal = userId; // Store creator's ID
+
             feedSectionEl = document.getElementById('feed-section');
             feedItemsContainerEl = document.getElementById('feed-items-container');
             feedLoaderEl = document.getElementById('feed-loader');
@@ -474,7 +527,7 @@
             try {
                 const creator = await window.websim.getCreator();
                 
-                if (creator) {
+                if (creator && creator.username && creator.id) { // Ensure creator and essential IDs are present
                     const profileImage = document.getElementById('profile-image');
                     const usernameEl = document.getElementById('username');
                     
@@ -486,11 +539,12 @@
                     document.getElementById('loading').style.display = 'none';
                     document.getElementById('profile-content').style.display = 'block';
 
-                    // Initialize feed after profile is loaded
-                    initializeFeed(creator.username);
+                    // Initialize feed after profile is loaded, passing username and ID
+                    initializeFeed(creator.username, creator.id);
 
                 } else {
-                    document.getElementById('loading').textContent = 'Creator profile not found.';
+                    document.getElementById('loading').textContent = 'Creator profile not found or missing ID.';
+                    console.error('Creator data:', creator);
                 }
             } catch (error) {
                 console.error('Error loading creator profile:', error);
