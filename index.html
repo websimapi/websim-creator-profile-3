@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creator Profile</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a23;
+            color: #00ff41;
+            font-family: 'Courier Prime', monospace;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px; /* Add padding for smaller screens */
+            background-image: 
+                radial-gradient(circle at 20% 50%, #1a1a3a 0%, transparent 50%),
+                radial-gradient(circle at 80% 50%, #2a2a4a 0%, transparent 50%),
+                linear-gradient(45deg, #0a0a23 25%, transparent 25%),
+                linear-gradient(-45deg, #0a0a23 25%, transparent 25%);
+            background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+            animation: retro-bg 10s ease-in-out infinite alternate;
+        }
+        
+        @keyframes retro-bg {
+            0% { background-position: 0% 0%, 100% 100%, 0 0, 0 0; }
+            100% { background-position: 100% 100%, 0% 0%, 20px 20px, -20px -20px; }
+        }
+        
+        .terminal {
+            background: rgba(10, 10, 35, 0.95);
+            border: 3px solid #00ff41;
+            border-radius: 15px;
+            padding: 20px; /* Unified padding */
+            max-width: 700px; /* Increased width for feed */
+            width: 100%; /* Responsive width */
+            box-shadow: 
+                0 0 20px #00ff41,
+                inset 0 0 20px rgba(0, 255, 65, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .terminal::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 65, 0.03) 2px,
+                rgba(0, 255, 65, 0.03) 4px
+            );
+            pointer-events: none;
+        }
+        
+        .ascii-border {
+            color: #00ff41; /* Changed to main green for consistency */
+            font-size: 12px;
+            line-height: 1;
+            margin: 10px 0;
+            text-align: center;
+            white-space: pre; /* Preserve spacing in ASCII art */
+        }
+        
+        .profile-container {
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            margin-bottom: 20px; /* Space before feed */
+        }
+        
+        .profile-image {
+            width: 120px; /* Slightly smaller */
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid #1e3a8a;
+            margin: 0 auto 15px;
+            display: block;
+            box-shadow: 
+                0 0 10px #1e3a8a,
+                inset 0 0 10px rgba(30, 58, 138, 0.3);
+            image-rendering: pixelated;
+            filter: contrast(1.2) brightness(1.1);
+        }
+        
+        .username {
+            font-size: 2.2em; /* Adjusted size */
+            font-weight: bold;
+            color: #00ff41;
+            text-shadow: 
+                0 0 10px #00ff41,
+                2px 2px 0 #1e3a8a;
+            margin-bottom: 15px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+        
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #00ff41, 2px 2px 0 #1e3a8a; }
+            to { text-shadow: 0 0 20px #00ff41, 0 0 30px #00ff41, 2px 2px 0 #1e3a8a; }
+        }
+        
+        .sonauto-button {
+            background: #de1d48;
+            border: 2px solid black;
+            border-radius: 10px;
+            padding: 8px; /* Adjusted padding */
+            text-decoration: none;
+            font-size: 1em; /* Adjusted size */
+            font-weight: bold; 
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .sonauto-icon {
+            width: 40px; /* Adjusted size */
+            height: 40px;
+            image-rendering: pixelated;
+        }
+        
+        .loading {
+            color: #1e3a8a;
+            font-size: 1em; /* Adjusted size */
+            padding: 10px;
+            text-align: center;
+        }
+        
+        .loading::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: ''; }
+            40% { content: '.'; }
+            60% { content: '..'; }
+            80%, 100% { content: '...'; }
+        }
+        
+        .construction-text {
+            color: #00ff41;
+            font-size: 0.9em; /* Adjusted size */
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .construction-text s {
+            color: #ff4100; 
+            text-decoration-color: #ff4100; 
+        }
+
+        /* New styles for the feed */
+        #feed-section {
+            margin-top: 15px;
+            border-top: 2px dashed #00ff41;
+            padding-top: 10px;
+        }
+
+        #feed-items-container {
+            max-height: 280px; 
+            overflow-y: auto;
+            padding: 10px;
+            border: 1px solid #1e3a8a; 
+            border-radius: 8px;
+            margin-bottom: 10px;
+            background: rgba(0,0,0,0.1); /* Slight bg tint for scroll area */
+        }
+
+        /* Custom scrollbar for WebKit browsers */
+        #feed-items-container::-webkit-scrollbar {
+            width: 10px;
+        }
+        #feed-items-container::-webkit-scrollbar-track {
+            background: rgba(10, 10, 35, 0.5); 
+        }
+        #feed-items-container::-webkit-scrollbar-thumb {
+            background-color: #00ff41; 
+            border-radius: 5px;
+            border: 2px solid #0a0a23; 
+        }
+        /* Custom scrollbar for Firefox */
+        #feed-items-container {
+            scrollbar-width: thin;
+            scrollbar-color: #00ff41 rgba(10, 10, 35, 0.5);
+        }
+
+        .feed-item {
+            padding: 8px 5px;
+            border-bottom: 1px dotted rgba(0, 255, 65, 0.4); 
+            font-size: 0.9em;
+            line-height: 1.5;
+            color: #c0c0c0; /* Lighter grey for feed text */
+        }
+        .feed-item:last-child {
+            border-bottom: none;
+        }
+        .feed-item strong {
+            color: #00ff41; /* Green for emphasis */
+        }
+        .feed-item a {
+            color: #87CEFA; /* LightSkyBlue for links */
+            text-decoration: underline;
+        }
+        .feed-item a:hover {
+            color: #FFB6C1; /* LightPink for hover */
+        }
+        .feed-item-date {
+            font-size: 0.8em;
+            color: #1e3a8a; 
+            margin-left: 5px;
+            opacity: 0.8;
+        }
+        #feed-loader {
+            /* Uses existing .loading styles, can add specific overrides if needed */
+        }
+        #feed-end-message {
+            padding: 10px;
+            text-align: center;
+            color: #1e3a8a;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .terminal {
+                padding: 15px;
+                margin: 10px; /* Ensure it doesn't touch edges */
+            }
+            
+            .username {
+                font-size: 1.8em;
+            }
+            
+            .sonauto-button {
+                padding: 10px 15px; 
+                font-size: 1em;
+            }
+            .profile-image {
+                width: 100px;
+                height: 100px;
+            }
+            #feed-items-container {
+                max-height: 200px; /* Shorter feed on small screens */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <div class="ascii-border">
+            ╔══════════════════════════════════════════════════════════════╗
+        </div>
+        
+        <div class="profile-container">
+            <div id="loading" class="loading">Loading creator profile...</div>
+            <div id="profile-content" style="display: none;">
+                <img id="profile-image" src="" alt="Profile" class="profile-image">
+                <h1 id="username" class="username"></h1>
+                
+                <a href="https://sonauto.ai/artist/api" target="_blank" class="sonauto-button">
+                    <img src="/sonauto.png" alt="Sonauto" class="sonauto-icon">
+                </a>
+                <p class="construction-text">This Page Is <s>Always</s> Somewhat Under Construction</p>
+            </div>
+        </div>
+
+        <div id="feed-section" style="display: none;">
+            <div class="ascii-border">
+                ╠═════════════════════[ Activity Feed ]═════════════════════╣
+            </div>
+            <div id="feed-items-container">
+                <!-- Feed items will be injected here by JavaScript -->
+            </div>
+            <div id="feed-loader" class="loading" style="display: none;">Loading more activity...</div>
+            <div id="feed-end-message" style="display: none;">-- End of activity --</div>
+        </div>
+        
+        <div class="ascii-border">
+            ╚══════════════════════════════════════════════════════════════╝
+        </div>
+    </div>
+
+    <script>
+        let creatorUsernameGlobal = '';
+        let feedOffset = 0;
+        const feedLimit = 10; // Number of items to fetch per call
+        let isLoadingFeed = false;
+        let noMoreFeedItems = false;
+
+        let feedItemsContainerEl;
+        let feedLoaderEl;
+        let feedEndMessageEl;
+        let feedSectionEl;
+
+        function capitalizeFirstLetter(string) {
+            if (!string) return '';
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        function renderFeedItem(item) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'feed-item';
+
+            let contentHtml = '';
+            const dateStr = new Date(item.timestamp).toLocaleDateString();
+            const timeStr = new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            // Prefer item.message if available
+            if (item.message) {
+                contentHtml = item.message; // Assuming item.message might contain HTML for links, etc.
+                                         // For security, if item.message is plain text, escape it or build HTML carefully.
+                                         // Here, we trust websim's item.message or ensure it's constructed safely.
+            } else {
+                // Fallback to constructing based on type
+                let actionText = capitalizeFirstLetter(item.type.replace(/_/g, ' '));
+                let targetText = '';
+
+                if (item.target) {
+                    if (item.target.title) {
+                        targetText = `<strong>${item.target.title}</strong>`;
+                        if (item.target.url) {
+                            targetText = `<a href="${item.target.url}" target="_blank">${targetText}</a>`;
+                        }
+                    } else if (item.target.username) {
+                         targetText = `<strong>@${item.target.username}</strong>`;
+                         if (item.target.url) {
+                            targetText = `<a href="${item.target.url}" target="_blank">${targetText}</a>`;
+                        }
+                    }
+                }
+                
+                contentHtml = `${actionText}`;
+                if (item.actor && item.actor.username !== creatorUsernameGlobal) { // Show actor if not current user
+                    contentHtml = `<strong>@${item.actor.username}</strong> ${actionText.toLowerCase()}`;
+                }
+                if (targetText) {
+                    contentHtml += `: ${targetText}`;
+                }
+            }
+            
+            // Ensure links in item.message are also styled if they exist
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = contentHtml;
+            tempDiv.querySelectorAll('a').forEach(a => {
+                a.target = "_blank"; // Ensure all links open in new tab
+            });
+            
+            itemDiv.innerHTML = `${tempDiv.innerHTML} <span class="feed-item-date">(${dateStr} ${timeStr})</span>`;
+            return itemDiv;
+        }
+
+        async function loadMoreFeedItems() {
+            if (isLoadingFeed || noMoreFeedItems) {
+                return;
+            }
+
+            isLoadingFeed = true;
+            if (feedLoaderEl) feedLoaderEl.style.display = 'block';
+            if (feedEndMessageEl) feedEndMessageEl.style.display = 'none';
+
+            try {
+                const items = await window.websim.getCreatorFeedItems(creatorUsernameGlobal, feedOffset, feedLimit);
+                if (items && items.length > 0) {
+                    items.forEach(item => {
+                        if (feedItemsContainerEl) feedItemsContainerEl.appendChild(renderFeedItem(item));
+                    });
+                    feedOffset += items.length;
+                    if (items.length < feedLimit) {
+                        noMoreFeedItems = true;
+                        if (feedEndMessageEl) feedEndMessageEl.style.display = 'block';
+                    }
+                } else {
+                    noMoreFeedItems = true;
+                    if (feedEndMessageEl && feedOffset === 0) { // No items at all
+                        feedItemsContainerEl.innerHTML = '<div class="feed-item" style="text-align:center; color: #1e3a8a;">No activity yet.</div>';
+                    } else if (feedEndMessageEl) {
+                         feedEndMessageEl.style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading feed items:', error);
+                if (feedItemsContainerEl) {
+                     const errorDiv = document.createElement('div');
+                     errorDiv.className = 'feed-item';
+                     errorDiv.style.color = '#ff4100';
+                     errorDiv.textContent = 'Error loading activity feed.';
+                     feedItemsContainerEl.appendChild(errorDiv);
+                }
+                noMoreFeedItems = true; // Stop trying on error
+            } finally {
+                isLoadingFeed = false;
+                if (feedLoaderEl) feedLoaderEl.style.display = 'none';
+            }
+        }
+
+        function handleFeedScroll() {
+            if (!feedItemsContainerEl) return;
+            // Load more when 100px from the bottom
+            if (feedItemsContainerEl.scrollTop + feedItemsContainerEl.clientHeight >= feedItemsContainerEl.scrollHeight - 100) {
+                loadMoreFeedItems();
+            }
+        }
+
+        function initializeFeed(username) {
+            creatorUsernameGlobal = username;
+            feedSectionEl = document.getElementById('feed-section');
+            feedItemsContainerEl = document.getElementById('feed-items-container');
+            feedLoaderEl = document.getElementById('feed-loader');
+            feedEndMessageEl = document.getElementById('feed-end-message');
+
+            if (!feedItemsContainerEl || !feedLoaderEl || !feedEndMessageEl || !feedSectionEl) {
+                console.error("Feed elements not found in DOM.");
+                return;
+            }
+            
+            feedSectionEl.style.display = 'block';
+            feedItemsContainerEl.addEventListener('scroll', handleFeedScroll);
+            loadMoreFeedItems(); // Load initial batch
+        }
+
+        async function loadCreatorProfile() {
+            try {
+                const creator = await window.websim.getCreator();
+                
+                if (creator) {
+                    const profileImage = document.getElementById('profile-image');
+                    const usernameEl = document.getElementById('username');
+                    
+                    profileImage.src = `https://images.websim.com/avatar/${creator.username}`;
+                    profileImage.alt = `${creator.username}'s avatar`;
+                    
+                    usernameEl.textContent = `@${creator.username}`;
+                    
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('profile-content').style.display = 'block';
+
+                    // Initialize feed after profile is loaded
+                    initializeFeed(creator.username);
+
+                } else {
+                    document.getElementById('loading').textContent = 'Creator profile not found.';
+                }
+            } catch (error) {
+                console.error('Error loading creator profile:', error);
+                document.getElementById('loading').textContent = 'Error loading profile.';
+            }
+        }
+        
+        window.addEventListener('load', loadCreatorProfile);
+    </script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon='{"version":"2024.11.0","token":"4c6229722a6346bc8eb5cb0e5eae5d41","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
